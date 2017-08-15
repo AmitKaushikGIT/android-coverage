@@ -4,7 +4,7 @@ import org.gradle.api.Action
 import org.gradle.util.ConfigureUtil
 
 /**
- * Created by kaushik on 8/13/17.
+ * Exposes properties to gradle DSL which can be used to configure coverage tasks
  */
 class CoverageExtension {
     UnitTestConfig unitTestConfig

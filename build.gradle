@@ -1,14 +1,24 @@
 buildscript {
     repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
         mavenCentral()
         jcenter()
     }
+    dependencies {
+        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3"
+    }
 }
 
+apply plugin: "com.jfrog.bintray"
+
 group 'in.proroaster.kaushik'
-version '1.0-SNAPSHOT'
+version '1.0'
 
 apply plugin: 'groovy'
+apply plugin: 'java'
+apply plugin: 'maven-publish'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -23,5 +33,48 @@ dependencies {
     compile 'com.android.tools.build:gradle:2.2.3'
     testCompile('org.spockframework:spock-core:0.7-groovy-2.0') {
         exclude group: 'org.codehaus.groovy'
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    pkg {
+        repo = 'android'
+        name = 'coverage'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/AmitKaushikGIT/android-coverage.git'
+        version {
+            name = '1.0'
+            desc = 'Gradle plugin for android coverage'
+            released  = new Date()
+            vcsTag = 'v1.0'
+        }
+    }
+    publications = ['mavenJava']
+    publish = true
+}
+
+// custom tasks for creating source/javadoc jars
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+// add javadoc/source jar tasks as artifacts
+artifacts {
+    archives sourcesJar
+}
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            if (plugins.hasPlugin('war')) {
+                from components.web
+            } else {
+                from components.java
+            }
+
+            artifact sourcesJar
+        }
     }
 }
