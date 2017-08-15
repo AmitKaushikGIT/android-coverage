@@ -39,7 +39,12 @@ class TaskUtils {
                     def unitTestCoverageTask = "${variant}UnitTestCoverage"
                     createUnitTestCoverageTask(variant, variantClassPath, buildType, flavor, unitTestCoverageTask, unitTestTask, project, config.unitTestConfig)
                     validateTaskExists(unitTestCoverageTask, project)
-                    //todo exclusions not working properly
+                    def checkUnitCoverageTask = "check${variant.capitalize()}${TestType.UNIT.typeString}Coverage"
+                    createCheckUnitTestCoverageThresholdTask(variant, TestType.UNIT, project, config, checkUnitCoverageTask)
+                    validateTaskExists(checkUnitCoverageTask, project)
+                    if(config.unitTestConfig.checkThresholdAfterRunningTest) {
+                        project.tasks.findByName(checkUnitCoverageTask).dependsOn(unitTestCoverageTask)
+                    }
                 }
             }
             productFlavorNames.each { flavor ->
@@ -51,7 +56,32 @@ class TaskUtils {
                 createMergeCoverageTasks(flavor, mergeTask, testTask, project)
                 validateTaskExists(mergeTask, project)
                 createAndroidTestCoverageTask(variant, variantClassPath, "debug", flavor, coverageTask, mergeTask, project, config.instrumentationTestConfig)
+                validateTaskExists(coverageTask, project)
+                def checkAndroidCoverageTaskName = "check${variant.capitalize()}${TestType.INSTRUMENTATION.typeString}Coverage"
+                createCheckAndroidTestCoverageThresholdTask(variant, TestType.INSTRUMENTATION, project, config, checkAndroidCoverageTaskName)
+                validateTaskExists(checkAndroidCoverageTaskName, project)
+                if(config.instrumentationTestConfig.checkThresholdAfterRunningTest) {
+                    project.tasks.findByName(checkAndroidCoverageTaskName).dependsOn(coverageTask)
+                }
             }
+        }
+    }
+
+    static void createCheckUnitTestCoverageThresholdTask(variant, TestType testType, Project project, CoverageExtension config, GString taskName) {
+        project.tasks.create(name: taskName, type: CheckCoverageThresholdTask ){
+            ((CheckCoverageThresholdTask)it).project = project
+            ((CheckCoverageThresholdTask)it).testType = testType
+            ((CheckCoverageThresholdTask)it).setVariant(variant)
+            ((CheckCoverageThresholdTask)it).setCoverageLimits(config.unitTestConfig.coverageLimits)
+        }
+    }
+
+    static void createCheckAndroidTestCoverageThresholdTask(variant, TestType testType, Project project, CoverageExtension config, GString taskName) {
+        project.tasks.create(name: taskName, type: CheckCoverageThresholdTask ){
+            ((CheckCoverageThresholdTask)it).project = project
+            ((CheckCoverageThresholdTask)it).testType = testType
+            ((CheckCoverageThresholdTask)it).setVariant(variant)
+            ((CheckCoverageThresholdTask)it).setCoverageLimits(config.unitTestConfig.coverageLimits)
         }
     }
 

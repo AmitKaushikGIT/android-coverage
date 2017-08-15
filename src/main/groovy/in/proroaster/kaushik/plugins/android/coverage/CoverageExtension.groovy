@@ -14,8 +14,8 @@ class CoverageExtension {
         return unitTestConfig(ConfigureUtil.configureUsing(closure))
     }
 
-    void unitTestConfig(Action<? super UnitTestConfig> action){
-        if(unitTestConfig == null) {
+    void unitTestConfig(Action<? super UnitTestConfig> action) {
+        if (unitTestConfig == null) {
             unitTestConfig = new UnitTestConfig()
             action.execute(unitTestConfig)
         }
@@ -25,17 +25,20 @@ class CoverageExtension {
         return instrumentationTestConfig(ConfigureUtil.configureUsing(closure))
     }
 
-    void instrumentationTestConfig(Action<? super InstrumentationTestConfig> action){
-        if(instrumentationTestConfig == null) {
+    void instrumentationTestConfig(Action<? super InstrumentationTestConfig> action) {
+        if (instrumentationTestConfig == null) {
             instrumentationTestConfig = new InstrumentationTestConfig()
             action.execute(instrumentationTestConfig)
         }
     }
+
     class InstrumentationTestConfig {
         List<String> exclusions = []
         List<String> inclusions = []
         String executionData = null
         boolean csvReport = false
+        boolean checkThresholdAfterRunningTest = true
+        def coverageLimits = [:]
     }
 
     class UnitTestConfig {
@@ -43,5 +46,7 @@ class CoverageExtension {
         List<String> inclusions = []
         String executionData = null
         boolean csvReport = false
+        boolean checkThresholdAfterRunningTest = true
+        def coverageLimits = [:]
     }
 }
