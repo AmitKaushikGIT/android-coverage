@@ -25,14 +25,17 @@ class CoverageExtension {
         return instrumentationTestConfig(ConfigureUtil.configureUsing(closure))
     }
 
-    void instrumentationTestConfig(Action<? super UnitTestConfig> action){
+    void instrumentationTestConfig(Action<? super InstrumentationTestConfig> action){
         if(instrumentationTestConfig == null) {
             instrumentationTestConfig = new InstrumentationTestConfig()
             action.execute(instrumentationTestConfig)
         }
     }
     class InstrumentationTestConfig {
-        List<String> exclusions
+        List<String> exclusions = []
+        List<String> inclusions = []
+        String executionData = null
+        boolean csvReport = false
     }
 
     class UnitTestConfig {
