@@ -81,7 +81,7 @@ class TaskUtils {
             ((CheckCoverageThresholdTask)it).project = project
             ((CheckCoverageThresholdTask)it).testType = testType
             ((CheckCoverageThresholdTask)it).setVariant(variant)
-            ((CheckCoverageThresholdTask)it).setCoverageLimits(config.unitTestConfig.coverageLimits)
+            ((CheckCoverageThresholdTask)it).setCoverageLimits(config.instrumentationTestConfig.coverageLimits)
         }
     }
 
