@@ -11,10 +11,6 @@ Also helps you set coverage threshold for you source code and creates tasks to v
     buildscript {
         repositories {
             mavenCentral()
-            maven 
-            {
-                url "https://dl.bintray.com/amitkaushikgit/android/"
-            }
             jcenter()
         }
 
@@ -24,12 +20,12 @@ Also helps you set coverage threshold for you source code and creates tasks to v
     }
 
 #Tasks
-Creates following tasks for debug build type:
-flavorDebugUnitTestCoverage
-flavorDebugInstrumentationTestCoverage
-mergeFlavorDebugCoverageReports
-checkFlavorDebugUnitTestCoverage
-checkFlavorDebugAndroidTestCoverage
+Creates following tasks for debug build type: 
+ 1. flavorDebugUnitTestCoverage
+ 2. flavorDebugInstrumentationTestCoverage
+ 3. mergeFlavorDebugCoverageReports
+ 4. checkFlavorDebugUnitTestCoverage
+ 5. checkFlavorDebugAndroidTestCoverage
 
 #extensions
 Offers extentions to configure your reports:
@@ -73,7 +69,7 @@ set true if you want to run coverage threshold check whenever you run test(Ideal
 
 if you want to run your check separately, remember to generate coverage report before running check
 
-eg. if you set to true then you can run *checkFlavorDebugUnitTestCoverage* which will run *flavorDebugUnitTestCoverage* as dependency
+i.e. if you set to true then you can run *checkFlavorDebugUnitTestCoverage* which will run *flavorDebugUnitTestCoverage* as dependency
 
 #Notes
  - can be applied to android applications and library
