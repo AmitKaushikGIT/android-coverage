@@ -4,6 +4,7 @@ import in.proroaster.kaushik.plugins.android.coverage.CoverageExtension.Instrume
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.WorkResult
 import org.gradle.testing.jacoco.tasks.JacocoMerge
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
@@ -14,29 +15,10 @@ import static in.proroaster.kaushik.plugins.android.coverage.ValidationUtil.vali
  */
 class TaskUtils {
     static void createTasks(Project project) {
-        project.copy {
-            from(project.zipTree(new CoverageConstants().getClass().getProtectionDomain().getCodeSource().getLocation().getPath()).matching {
-                include '*.sh'
-            })
-            into("${project.projectDir}")
-        }
-        try {
-            File file = new File("${project.projectDir}/runTestOnMultipleDevices.sh")
-            Runtime.getRuntime().exec("chmod 777 ${file.getAbsolutePath()}")
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        copyTestRunnerScriptToProject(project)
+        givePermissionToTestRunnerScript(project)
         project.afterEvaluate {
-            project.tasks.create(name: "createABCDirs") {
-                doFirst {
-                    project.mkdir "${project.buildDir}/coverage"
-                }
-            }
-            project.tasks.create(name: "cleanUpScript") {
-                doFirst {
-                    project.file("${project.projectDir}/runTestOnMultipleDevices.sh").delete()
-                }
-            }
+            createShardingHelperTasks(project)
             CoverageExtension config = project.coverage
             def buildTypesNames = project.android.buildTypes.collect { buildType ->
                 buildType.name
@@ -97,8 +79,39 @@ class TaskUtils {
         }
     }
 
+    private static void createShardingHelperTasks(Project project) {
+        project.tasks.create(name: "createCoverageDir") {
+            doFirst {
+                project.mkdir "${project.buildDir}/coverage"
+            }
+        }
+        project.tasks.create(name: "cleanUpScript") {
+            doFirst {
+                project.file("${project.projectDir}/runTestOnMultipleDevices.sh").delete()
+            }
+        }
+    }
+
+    private static void givePermissionToTestRunnerScript(Project project) {
+        try {
+            File file = new File("${project.projectDir}/runTestOnMultipleDevices.sh")
+            Runtime.getRuntime().exec("chmod 777 ${file.getAbsolutePath()}")
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static WorkResult copyTestRunnerScriptToProject(Project project) {
+        project.copy {
+            from(project.zipTree(new CoverageConstants().getClass().getProtectionDomain().getCodeSource().getLocation().getPath()).matching {
+                include '*.sh'
+            })
+            into("${project.projectDir}")
+        }
+    }
+
     static def createShardedTestTask(flavor, taskName, Project project, InstrumentationTestConfig config) {
-        project.tasks.create(name: taskName, type: Exec, dependsOn: ["assemble${flavor.capitalize()}Debug", "assemble${flavor.capitalize()}DebugAndroidTest", "createABCDirs"]) {
+        project.tasks.create(name: taskName, type: Exec, dependsOn: ["assemble${flavor.capitalize()}Debug", "assemble${flavor.capitalize()}DebugAndroidTest", "createCoverageDir"]) {
             group = "Verification"
             description = "Runs tests on multiple devices and pulls coverage reports"
             commandLine "./runTestOnMultipleDevices.sh", "${project.buildDir}/outputs/apk/app-dev1-debug-androidTest.apk",  "${project.buildDir}/outputs/apk/app-dev1-debug.apk",  config.appPackageName, config.testPackageName,  config.testRunner, "${project.buildDir}/coverage/"
