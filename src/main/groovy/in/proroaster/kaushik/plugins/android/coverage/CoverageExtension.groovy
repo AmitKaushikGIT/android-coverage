@@ -39,6 +39,12 @@ class CoverageExtension {
         boolean csvReport = false
         boolean checkThresholdAfterRunningTest = true
         def coverageLimits = [:]
+        boolean sharding = false
+        String testRunner
+        String appPackageName
+        String testPackageName
+        String testApkPath
+        String targetApkPath
     }
 
     class UnitTestConfig {

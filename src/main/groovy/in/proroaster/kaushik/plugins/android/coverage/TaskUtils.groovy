@@ -1,7 +1,9 @@
 package in.proroaster.kaushik.plugins.android.coverage
 
+import in.proroaster.kaushik.plugins.android.coverage.CoverageExtension.InstrumentationTestConfig
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.tasks.Exec
 import org.gradle.testing.jacoco.tasks.JacocoMerge
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
@@ -12,7 +14,29 @@ import static in.proroaster.kaushik.plugins.android.coverage.ValidationUtil.vali
  */
 class TaskUtils {
     static void createTasks(Project project) {
+        project.copy {
+            from(project.zipTree(new CoverageConstants().getClass().getProtectionDomain().getCodeSource().getLocation().getPath()).matching {
+                include '*.sh'
+            })
+            into("${project.projectDir}")
+        }
+        try {
+            File file = new File("${project.projectDir}/runTestOnMultipleDevices.sh")
+            Runtime.getRuntime().exec("chmod 777 ${file.getAbsolutePath()}")
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         project.afterEvaluate {
+            project.tasks.create(name: "createABCDirs") {
+                doFirst {
+                    project.mkdir "${project.buildDir}/coverage"
+                }
+            }
+            project.tasks.create(name: "cleanUpScript") {
+                doFirst {
+                    project.file("${project.projectDir}/runTestOnMultipleDevices.sh").delete()
+                }
+            }
             CoverageExtension config = project.coverage
             def buildTypesNames = project.android.buildTypes.collect { buildType ->
                 buildType.name
@@ -42,7 +66,7 @@ class TaskUtils {
                     def checkUnitCoverageTask = "check${variant.capitalize()}${TestType.UNIT.typeString}Coverage"
                     createCheckUnitTestCoverageThresholdTask(variant, TestType.UNIT, project, config, checkUnitCoverageTask)
                     validateTaskExists(checkUnitCoverageTask, project)
-                    if(config.unitTestConfig.checkThresholdAfterRunningTest) {
+                    if (config.unitTestConfig.checkThresholdAfterRunningTest) {
                         project.tasks.findByName(checkUnitCoverageTask).dependsOn(unitTestCoverageTask)
                     }
                 }
@@ -53,35 +77,49 @@ class TaskUtils {
                 def variant = "${flavor}Debug"
                 def variantClassPath = "${flavor}/debug"
                 def coverageTask = "${variant}AndroidTestCoverage"
-                createMergeCoverageTasks(flavor, mergeTask, testTask, project)
+                if (config.instrumentationTestConfig.sharding) {
+                    testTask = "shard${flavor.capitalize()}DebugAndroidTest"
+                    createShardedTestTask(flavor, testTask, project, config.instrumentationTestConfig)
+                    validateTaskExists(testTask, project)
+                    project.task(testTask).finalizedBy "cleanUpScript"
+                }
+                createMergeCoverageTasks(flavor, mergeTask, testTask, project, config.instrumentationTestConfig)
                 validateTaskExists(mergeTask, project)
                 createAndroidTestCoverageTask(variant, variantClassPath, "debug", flavor, coverageTask, mergeTask, project, config.instrumentationTestConfig)
                 validateTaskExists(coverageTask, project)
                 def checkAndroidCoverageTaskName = "check${variant.capitalize()}${TestType.INSTRUMENTATION.typeString}Coverage"
                 createCheckAndroidTestCoverageThresholdTask(variant, TestType.INSTRUMENTATION, project, config, checkAndroidCoverageTaskName)
                 validateTaskExists(checkAndroidCoverageTaskName, project)
-                if(config.instrumentationTestConfig.checkThresholdAfterRunningTest) {
+                if (config.instrumentationTestConfig.checkThresholdAfterRunningTest) {
                     project.tasks.findByName(checkAndroidCoverageTaskName).dependsOn(coverageTask)
                 }
             }
         }
     }
 
+    static def createShardedTestTask(flavor, taskName, Project project, InstrumentationTestConfig config) {
+        project.tasks.create(name: taskName, type: Exec, dependsOn: ["assemble${flavor.capitalize()}Debug", "assemble${flavor.capitalize()}DebugAndroidTest", "createABCDirs"]) {
+            group = "Verification"
+            description = "Runs tests on multiple devices and pulls coverage reports"
+            commandLine "./runTestOnMultipleDevices.sh", "${project.buildDir}/outputs/apk/app-dev1-debug-androidTest.apk",  "${project.buildDir}/outputs/apk/app-dev1-debug.apk",  config.appPackageName, config.testPackageName,  config.testRunner, "${project.buildDir}/coverage/"
+        }
+    }
+
     static void createCheckUnitTestCoverageThresholdTask(variant, TestType testType, Project project, CoverageExtension config, GString taskName) {
-        project.tasks.create(name: taskName, type: CheckCoverageThresholdTask ){
-            ((CheckCoverageThresholdTask)it).project = project
-            ((CheckCoverageThresholdTask)it).testType = testType
-            ((CheckCoverageThresholdTask)it).setVariant(variant)
-            ((CheckCoverageThresholdTask)it).setCoverageLimits(config.unitTestConfig.coverageLimits)
+        project.tasks.create(name: taskName, type: CheckCoverageThresholdTask) {
+            ((CheckCoverageThresholdTask) it).project = project
+            ((CheckCoverageThresholdTask) it).testType = testType
+            ((CheckCoverageThresholdTask) it).setVariant(variant)
+            ((CheckCoverageThresholdTask) it).setCoverageLimits(config.unitTestConfig.coverageLimits)
         }
     }
 
     static void createCheckAndroidTestCoverageThresholdTask(variant, TestType testType, Project project, CoverageExtension config, GString taskName) {
-        project.tasks.create(name: taskName, type: CheckCoverageThresholdTask ){
-            ((CheckCoverageThresholdTask)it).project = project
-            ((CheckCoverageThresholdTask)it).testType = testType
-            ((CheckCoverageThresholdTask)it).setVariant(variant)
-            ((CheckCoverageThresholdTask)it).setCoverageLimits(config.instrumentationTestConfig.coverageLimits)
+        project.tasks.create(name: taskName, type: CheckCoverageThresholdTask) {
+            ((CheckCoverageThresholdTask) it).project = project
+            ((CheckCoverageThresholdTask) it).testType = testType
+            ((CheckCoverageThresholdTask) it).setVariant(variant)
+            ((CheckCoverageThresholdTask) it).setCoverageLimits(config.instrumentationTestConfig.coverageLimits)
         }
     }
 
@@ -129,11 +167,15 @@ class TaskUtils {
 
     }
 
-    private static Task createMergeCoverageTasks(flavor, GString mergeTask, GString testTask, Project project) {
+    private static Task createMergeCoverageTasks(flavor, GString mergeTask, GString testTask, Project project, InstrumentationTestConfig config) {
         project.tasks.create(name: mergeTask, type: JacocoMerge, dependsOn: testTask) {
             group = "Coverage"
             description = "Merge coverage reports generated in various devices"
-            executionData = project.fileTree(dir: "$project.buildDir/outputs/code-coverage/connected/flavors/${flavor}/", includes: ["*.ec"])
+            def coverageData = "$project.buildDir/outputs/code-coverage/connected/flavors/${flavor}/"
+            if (config.sharding) {
+                coverageData = "$project.buildDir/coverage/"
+            }
+            executionData = project.fileTree(dir: coverageData, includes: ["*.ec"])
         }
     }
 
