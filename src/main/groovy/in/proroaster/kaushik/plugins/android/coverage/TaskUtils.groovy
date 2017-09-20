@@ -63,7 +63,7 @@ class TaskUtils {
                     testTask = "shard${flavor.capitalize()}DebugAndroidTest"
                     createShardedTestTask(flavor, testTask, project, config.instrumentationTestConfig)
                     validateTaskExists(testTask, project)
-                    project.task(testTask).finalizedBy "cleanUpScript"
+                    project.tasks.findByName(testTask).finalizedBy "cleanUpScript"
                 }
                 createMergeCoverageTasks(flavor, mergeTask, testTask, project, config.instrumentationTestConfig)
                 validateTaskExists(mergeTask, project)
