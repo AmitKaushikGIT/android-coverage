@@ -114,7 +114,7 @@ class TaskUtils {
         project.tasks.create(name: taskName, type: Exec, dependsOn: ["assemble${flavor.capitalize()}Debug", "assemble${flavor.capitalize()}DebugAndroidTest", "createCoverageDir"]) {
             group = "Verification"
             description = "Runs tests on multiple devices and pulls coverage reports"
-            commandLine "./runTestOnMultipleDevices.sh", "${project.buildDir}/outputs/apk/app-dev1-debug-androidTest.apk",  "${project.buildDir}/outputs/apk/app-dev1-debug.apk",  config.appPackageName, config.testPackageName,  config.testRunner, "${project.buildDir}/coverage/"
+            commandLine "./runTestOnMultipleDevices.sh", "${project.buildDir}/outputs/apk/${config.testApkPath}", "${project.buildDir}/outputs/apk/${config.targetApkPath}", config.appPackageName, config.testPackageName, config.testRunner, "${project.buildDir}/coverage/"
         }
     }
 
@@ -180,7 +180,8 @@ class TaskUtils {
 
     }
 
-    private static Task createMergeCoverageTasks(flavor, GString mergeTask, GString testTask, Project project, InstrumentationTestConfig config) {
+    private
+    static Task createMergeCoverageTasks(flavor, GString mergeTask, GString testTask, Project project, InstrumentationTestConfig config) {
         project.tasks.create(name: mergeTask, type: JacocoMerge, dependsOn: testTask) {
             group = "Coverage"
             description = "Merge coverage reports generated in various devices"
